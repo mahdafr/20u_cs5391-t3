@@ -2,6 +2,8 @@ import socket
 import threading
 import datetime
 from TimeStamp import TimeStamp
+from Server import CThread
+from Peer import Peer
 
 
 class Client(threading.Thread):
@@ -14,13 +16,16 @@ class Client(threading.Thread):
         self._my_ip = socket.gethostbyname(socket.gethostname())
         self._ts = TimeStamp(datetime.datetime.now())
         self._file = open(filename, 'a')                        # append to this file
+        self._peer = Peer()                                     # has a listener for peers
 
+    """ Send a TimeStamp, if it is time to do so. """
     def _send(self):
         msg = self._ts.message(self._my_ip, self._host_ip, datetime.datetime.now())
         if msg is not None:
             self._socket.sendall(bytes(msg, 'UTF-8'))           # time to send the TimeStamp
             self._file.write(msg + '\n')                        # write to file
 
+    """ Receive a TimeStamp, if it has been sent, without blocking the thread. """
     def _receive(self, buff_size=2048):
         try:
             msg = self._socket.recv(buff_size).decode()
@@ -31,20 +36,27 @@ class Client(threading.Thread):
         except ConnectionResetError:
             print('Server has forcibly closed the connection.')
             return -1
+        except BlockingIOError:
+            return 0
         return 0
 
+    """ Override Thread.run() to send/receive messages through the socket. """
     def run(self):
+        self._peer.start()
         while True:
-            if self._receive() < 0:                             # send the TimeStamp
+            if self._receive() < 0:                             # get a TimeStamp
                 self.exit()
                 return
-            self._send()                                        # get a TimeStamp
+            self._send()                                        # send the TimeStamp
             if self._ts.finished(datetime.datetime.now()):      # should this client close the connection?
                 self.exit()
+                self._peer.send_file(self._my_ip, self._file.name)
                 return
 
+    """ Close the connection and file. """
     def exit(self):
         print('Client disconnected at\t' + str(datetime.datetime.now()))
+        self._peer.exit()
         self._socket.close()
         self._file.close()
 

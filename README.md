@@ -33,19 +33,37 @@ _Timestamp Data_
 
 _End of Timestamp Data (after 5 minutes)_
 
+### Results
 - To get the current time, I used the `datetime` library.
     - [this StackOverflow page](https://stackoverflow.com/questions/1345827/how-do-i-find-the-time-difference-between-two-datetime-objects-in-python) provided several examples on functions to check time elapsed
     - there are 1000 microseconds in a millisecond (so, 10ms is 10000 microseconds)
     - there are 60s in a minute (so, 5m is 300s)
-    - these times helped each client thread to know when to store a timestamp and when to kill their threads
+    - these times helped each client thread to know when to store a timestamp and when to close their connections (killing threads); see Part 3 for their last actions
+- In order to prevent race conditions in the socket connections, I used the `socket.setblocking(FLAG)` method
+    - the `FLAG` parameter is set to `0` in order to prevent waiting
+    - this is similar to the `settimeout()` method of the Python [socket](https://docs.python.org/3/library/socket.html) library
 
 ## Part II
 While one client is already communicating with the server, you will run two other client programs that do the same tasks as described above.
 Make sure they have unique files that store the timestamp data.
 
+### Results
+- The program asks the user for how many clients to create on the system.
+    - For each client made, there is a file created to output the sent/received TimeStamps
+    - Clients' IDs starting from `0` to _`k`_, where _k_ is the user's input for the number of Clients
+    - Files will be stored in an `out` directory of the project (not included in the repo; see [.gitignore](https://github.com/mahdafr/20u_cs5391-t3/blob/master/.gitignore) file)
+
 ## Part III
 In this part, the clients are required to exchange their timestamp data files with each other in a peer-to-peer fashion.
 I encourage to think on how generically you can develop a program, which will allow _k_ Clients/Peers to efficiently share their timestamp data files with each other.
+
+### Results
+- Each client is a server (see [this StackOverflow question](https://stackoverflow.com/questions/23267305/python-sockets-peer-to-peer))
+    - where the listening socket picks a port (from 5000:6000) on the localhost
+    - where the connections are made through the main server (from Part 1) who stores the list of connected clients' addresses
+- Once a client's lifecycle completes (at 5m):
+    - it sends its file to all its peers (through the listener socket)
+    - each connected client will receive the file
 
 ## References
 http://net-informations.com/python/net/thread.htm
