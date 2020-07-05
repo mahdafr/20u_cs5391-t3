@@ -25,14 +25,19 @@ class Client(threading.Thread):
         try:
             msg = self._socket.recv(buff_size).decode()
             self._file.write(msg + '\n')                        # write to file
-        except socket.error:
-            pass
-        else:
-            pass
+        except ConnectionAbortedError:
+            print('Server has closed the connection.')
+            return -1
+        except ConnectionResetError:
+            print('Server has forcibly closed the connection.')
+            return -1
+        return 0
 
     def run(self):
         while True:
-            self._receive()                                     # send the TimeStamp
+            if self._receive() < 0:                             # send the TimeStamp
+                self.exit()
+                return
             self._send()                                        # get a TimeStamp
             if self._ts.finished(datetime.datetime.now()):      # should this client close the connection?
                 self.exit()

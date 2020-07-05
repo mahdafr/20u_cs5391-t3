@@ -8,7 +8,7 @@ class CThread(threading.Thread):
     def __init__(self, c_sock, c_addr, file='out/serverTimeData.txt'):
         threading.Thread.__init__(self)                         # create a new thread
         self._socket = c_sock
-        self._addr = c_addr
+        self._addr = c_addr[0]
         self._socket.setblocking(0)                             # non-blocking mode
         print('Client has connected at address:\t', self._addr)
         self._ts = TimeStamp(datetime.datetime.now())
@@ -17,8 +17,16 @@ class CThread(threading.Thread):
     def _send(self):
         msg = self._ts.message(self._addr, socket.gethostbyname(socket.gethostname()), datetime.datetime.now())
         if msg is not None:
-            self._socket.sendall(bytes(msg, 'UTF-8'))           # time to send the TimeStamp
-            self._file.write(msg + '\n')                        # write the TimeStamp to file
+            try:
+                self._socket.sendall(bytes(msg, 'UTF-8'))           # time to send the TimeStamp
+                self._file.write(msg + '\n')                        # write the TimeStamp to file
+            except ConnectionAbortedError:
+                print('Client has disconnected from:\t', self._addr)
+                return -1
+            except ConnectionResetError:
+                print('Client has forcibly disconnected from:\t', self._addr)
+                return -1
+        return 0
 
     def _receive(self, buff_size=2048):
         try:
@@ -31,13 +39,14 @@ class CThread(threading.Thread):
 
     def run(self, buff_size=2048):
         while True:
-            try:
-                self._send()                                    # send the TimeStamp
-                self._receive()                                 # get a TimeStamp
-            except ConnectionAbortedError:
-                print('Client has disconnected from:\t' + self._addr)
-            except ConnectionResetError:
-                print('Client has forcibly disconnected from:\t' + self._addr)
+            if self._send() < 0:                                # send the TimeStamp
+                self.exit()
+                return
+            self._receive()                                     # get a TimeStamp
+
+    def exit(self):
+        self._socket.close()
+        self._file.close()
 
 
 # open a stream to HOST, PORT and wait for clients to connect
