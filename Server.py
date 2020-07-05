@@ -9,26 +9,35 @@ class CThread(threading.Thread):
         threading.Thread.__init__(self)                         # create a new thread
         self._socket = c_sock
         self._addr = c_addr
+        self._socket.setblocking(0)                             # non-blocking mode
         print('Client has connected at address:\t', self._addr)
-        self._ts = TimeStamp()
+        self._ts = TimeStamp(datetime.datetime.now())
         self._file = open(file, 'a')
 
-    def _send(self, now=datetime.datetime.now()):
-        msg = self._ts.message(self._addr, socket.gethostbyname(socket.gethostname()), now)
+    def _send(self):
+        msg = self._ts.message(self._addr, socket.gethostbyname(socket.gethostname()), datetime.datetime.now())
         if msg is not None:
             self._socket.sendall(bytes(msg, 'UTF-8'))           # time to send the TimeStamp
-            self._file.write(msg + '\n')                        # write to file
+            self._file.write(msg + '\n')                        # write the TimeStamp to file
 
     def _receive(self, buff_size=2048):
-        return self._socket.recv(buff_size).decode()
+        try:
+            msg = self._socket.recv(buff_size).decode()
+            self._file.write(msg + '\n')                        # write to file
+        except socket.error:
+            pass
+        else:
+            pass
 
     def run(self, buff_size=2048):
         while True:
-            self._send()                                        # send the data back
-
-    def exit(self):
-        print('Client at\t', self._addr, '\tdisconnected.')
-        self._socket.close()
+            try:
+                self._send()                                    # send the TimeStamp
+                self._receive()                                 # get a TimeStamp
+            except ConnectionAbortedError:
+                print('Client has disconnected from:\t' + self._addr)
+            except ConnectionResetError:
+                print('Client has forcibly disconnected from:\t' + self._addr)
 
 
 # open a stream to HOST, PORT and wait for clients to connect
@@ -41,5 +50,5 @@ if __name__ == '__main__':
     print('Server started at\t' + HOST + '\nWaiting for client requests...')
     while True:                                                 # make a new thread for each connected client
         server.listen(1)
-        conn, addr = server.accept()
-        CThread(conn, addr).start()
+        conn, addr = server.accept()                            # get the client's socket and address
+        CThread(conn, addr).start()                             # start the connection/thread with the client
