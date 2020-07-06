@@ -1,9 +1,8 @@
-import socket
-import threading
-import datetime
+import socket, threading, datetime
 from TimeStamp import TimeStamp
-from Server import CThread
-from Peer import Peer
+from PeerNetwork import PeerNetwork
+
+s_cmd = 'SERVERADDR'
 
 
 class Client(threading.Thread):
@@ -16,7 +15,7 @@ class Client(threading.Thread):
         self._my_ip = socket.gethostbyname(socket.gethostname())
         self._ts = TimeStamp(datetime.datetime.now())
         self._file = open(filename, 'a')                        # append to this file
-        self._peer = Peer()                                     # has a listener for peers
+        self._peer = PeerNetwork()                              # has a listener for peers
 
     """ Send a TimeStamp, if it is time to do so. """
     def _send(self):
@@ -40,9 +39,15 @@ class Client(threading.Thread):
             return 0
         return 0
 
+    """ Get the list of peers from the server. """
+    def _build_network(self, cmd='GETPEERS', buff_size=2048):
+        self._socket.sendall(bytes(cmd, 'UTF-8'))               # request the list
+        self._peer.connect_to(list(self._socket.recv(buff_size).decode()))
+
     """ Override Thread.run() to send/receive messages through the socket. """
     def run(self):
         self._peer.start()
+        self._socket.sendall(bytes(s_cmd + str(self._peer.get_host()), 'UTF-8'))
         while True:
             if self._receive() < 0:                             # get a TimeStamp
                 self.exit()
@@ -59,6 +64,9 @@ class Client(threading.Thread):
         self._peer.exit()
         self._socket.close()
         self._file.close()
+
+    def get_server_address(self):
+        return self._peer.get_host()
 
 
 if __name__ == '__main__':
