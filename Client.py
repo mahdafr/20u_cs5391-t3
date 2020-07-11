@@ -3,9 +3,12 @@ from TimeStamp import TimeStamp
 from PeerNetwork import PeerNetwork
 import commands as cmd
 
+fname0 = 'out/client_'
+fname1 = '_TimeData.txt'
+
 
 class Client(threading.Thread):
-    def __init__(self, filename, host='127.0.0.1', port=8080):
+    def __init__(self, id, host='127.0.0.1', port=8080):
         threading.Thread.__init__(self)                         # create a new thread
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.connect((host, port))
@@ -13,8 +16,9 @@ class Client(threading.Thread):
         self._host_ip = host
         self._my_ip = socket.gethostbyname(socket.gethostname())
         self._ts = TimeStamp(datetime.datetime.now())
-        self._file = open(filename, 'a')                        # append to this file
-        self._peer = PeerNetwork()                              # has a listener for peers
+        self._file = open(fname0+str(id)+fname1, 'a')           # append to this file
+        self._peer = PeerNetwork(id)                            # has a listener for peers
+        self._id = id
 
     """ Send a TimeStamp, if it is time to do so. """
     def _send(self):
@@ -55,8 +59,9 @@ class Client(threading.Thread):
         # get the list of peers in this network, and connect to them
         self._socket.sendall(bytes(cmd.g_cmd, 'UTF-8'))
         try:
-            self._peer.connect_to(self._socket.recv(buff_size).decode())
-            print('connect to buddies!')
+            msg = cmd.parse_addr(self._socket.recv(buff_size).decode())
+            self._peer.connect_to(cmd.to_list(msg))
+            print('Client', self._id, 'connected to all peers in the network.')
         except:
             pass
 
@@ -70,7 +75,8 @@ class Client(threading.Thread):
                 return
             self._send()                                        # send the TimeStamp
             if self._ts.finished(datetime.datetime.now()):      # should this client close the connection?
-                self._peer.send_file(self._my_ip, self._file.name)
+                self._connect_to_peers()
+                self._peer.send_file(self._file.name)
                 self.exit()
                 return
 
@@ -79,7 +85,7 @@ class Client(threading.Thread):
         self._peer.exit()
         self._socket.close()
         self._file.close()
-        print('Client disconnected at\t' + str(datetime.datetime.now()))
+        print('Client', self._id, 'disconnected at', datetime.datetime.now())
 
     def get_server_address(self):
         return self._peer.get_host()
@@ -88,5 +94,5 @@ class Client(threading.Thread):
 if __name__ == '__main__':
     k = int(input('How many clients would you like to create?\t'))
     for i in range(k):
-        Client(filename='out/client_' + str(i) + '_TimeData.txt').start()
-        print('Client has been created at\t' + str(datetime.datetime.now()))
+        Client(id=i).start()
+        print('Client', i, 'has been created at', datetime.datetime.now())
