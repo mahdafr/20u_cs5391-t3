@@ -1,8 +1,7 @@
 import socket, threading, datetime
 from TimeStamp import TimeStamp
 from PeerNetwork import PeerNetwork
-
-s_cmd = 'SERVERADDR'
+import commands as cmd
 
 
 class Client(threading.Thread):
@@ -39,31 +38,48 @@ class Client(threading.Thread):
             return 0
         return 0
 
-    """ Get the list of peers from the server. """
-    def _build_network(self, cmd='GETPEERS', buff_size=2048):
-        self._socket.sendall(bytes(cmd, 'UTF-8'))               # request the list
-        self._peer.connect_to(list(self._socket.recv(buff_size).decode()))
+    """ Send the server this Client's listener address. """
+    def _invite_peers(self, buff_size=2048):
+        # send this client's listener socket address for other peers to connect
+        self._socket.sendall(bytes(cmd.s_cmd + str(self._peer.get_host()), 'UTF-8'))
+        try:
+            msg = self._socket.recv(buff_size)
+            if not cmd.server_ackd(msg):
+                print('Server did not ack receipt of listener socket address.')
+                exit(-1)
+        except:
+            pass
+
+    """ Connect to the list of peers from the server. """
+    def _connect_to_peers(self, buff_size=2048):
+        # get the list of peers in this network, and connect to them
+        self._socket.sendall(bytes(cmd.g_cmd, 'UTF-8'))
+        try:
+            self._peer.connect_to(self._socket.recv(buff_size).decode())
+            print('connect to buddies!')
+        except:
+            pass
 
     """ Override Thread.run() to send/receive messages through the socket. """
     def run(self):
-        self._peer.start()
-        self._socket.sendall(bytes(s_cmd + str(self._peer.get_host()), 'UTF-8'))
+        self._peer.start()                                      # tell the server this Client's listener address
+        self._invite_peers()
         while True:
             if self._receive() < 0:                             # get a TimeStamp
                 self.exit()
                 return
             self._send()                                        # send the TimeStamp
             if self._ts.finished(datetime.datetime.now()):      # should this client close the connection?
-                self.exit()
                 self._peer.send_file(self._my_ip, self._file.name)
+                self.exit()
                 return
 
     """ Close the connection and file. """
     def exit(self):
-        print('Client disconnected at\t' + str(datetime.datetime.now()))
         self._peer.exit()
         self._socket.close()
         self._file.close()
+        print('Client disconnected at\t' + str(datetime.datetime.now()))
 
     def get_server_address(self):
         return self._peer.get_host()

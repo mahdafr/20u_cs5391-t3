@@ -1,4 +1,4 @@
-import threading, socket, select
+import threading, socket, select, commands as cmd
 from Server import CThread, to_string
 
 host = '127.0.0.1'
@@ -15,13 +15,8 @@ class PeerNetwork(threading.Thread):
 
     """ Find a port to use for the listening socket. """
     def _get_port(self):
-        for i in range(5000, 6000):
-            try:
-                self._server.bind((host, i))
-                return i
-            except:
-                print('Can\'t use port:\t', i)
-        return -1
+        self._server.bind((host, 0))                                # let the OS choose a port
+        return self._server.getsockname()[1]
 
     """ Override Thread.run() to get connections. """
     def run(self):
@@ -37,18 +32,20 @@ class PeerNetwork(threading.Thread):
 
     def connect_to(self, peer_list):
         for p in peer_list:                                         # open a socket to each peer
+            p = cmd.to_address(p)
+            print('connected to', p)
             self._sock.append(socket.socket(socket.AF_INET, socket.SOCK_STREAM))
-            self._sock[-1].connect(p)
+            self._sock[-1].connect((p.split(cmd.split)))
             self._sock[-1].setblocking(0)
 
     """ Send the file to each peer. """
     def send_file(self, frm, filename):
-        for p in self._sock:                                        # send file to those who this client connceted to
+        for p in self._sock:                                        # send file to those who this client connected to
+            print(type(p))
             p.sendall(bytes(filename, 'UTF-8'))
             print('Sent file from:\t' + frm + 'to:\t' + p.socket.gethostbyname(socket.gethostname()))
-        for p in self._peer:
-            p.s
 
+    """ Get the address of the listener server. """
     def get_host(self):
         return self._host
 
@@ -57,3 +54,4 @@ class PeerNetwork(threading.Thread):
         for p in self._peer:
             p.exit()
         self._server.close()
+        print('Client at address\t' + str(self.get_host()) + '\tclosed their peer network.')

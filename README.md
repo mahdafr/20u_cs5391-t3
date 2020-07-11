@@ -59,7 +59,7 @@ I encourage to think on how generically you can develop a program, which will al
 
 ### Results
 - Each client is a server (see [this StackOverflow question](https://stackoverflow.com/questions/23267305/python-sockets-peer-to-peer))
-    - where the listening socket picks a port (from 5000:6000) on the localhost
+    - where the listening socket picks a port (from 5000:6000) on the localhost (_therefore, my program can only handle at most 1001 clients_)
     - where the connections are made through the main server (from Part 1) who stores the list of connected clients' listening server addresses
     - the list of sockets are stored and the list of clients' (peers who connected through the listener server) are also stored, see [this StackOverflow question](https://stackoverflow.com/questions/17539859/how-to-create-multi-server-sockets-on-one-client-in-python) which uses the Python [select](https://docs.python.org/2/library/select.html) library
 - Once a client's lifecycle completes (at 5m):
@@ -68,6 +68,11 @@ I encourage to think on how generically you can develop a program, which will al
         - those peers it connected to
         - these lists _might_ have duplicates so a dictionary will be used to map unique clients' information (host address and listener server address)
     - each connected peer will receive a file from a client
+
+## To Run
+1. Create an `out/` directory in the same folder as this project to output files.
+2. Run the `Server.py` script first.
+3. Run the `Client.py` script second. Enter the number of clients to create.
 
 ## References
 http://net-informations.com/python/net/thread.htm

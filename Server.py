@@ -1,9 +1,8 @@
 import socket, threading, datetime
 from TimeStamp import TimeStamp
+import commands as cmd
 
 client = []
-s_cmd = 'SERVERADDR'
-cmd = 'GETPEERS'
 
 
 class CThread(threading.Thread):
@@ -35,29 +34,23 @@ class CThread(threading.Thread):
     def _receive(self, buff_size=2048):
         try:
             msg = self._socket.recv(buff_size).decode()
-            if cmd not in msg or s_cmd not in msg:
+            if cmd.can_write_to_file(msg):
                 self._file.write(msg + '\n')                        # write the TimeStamp to file
             else:
-                if s_cmd in msg:
-                    client.append(list(msg[len(s_cmd)+1:]))         # save the ip_addr:port of the client's server
-                if cmd in msg:
-                    self._send_peer_list()                          # client wants a list of peers to connect to
+                if cmd.get_server(msg):                             # save the ip_addr:port of the client's server
+                    client.append(cmd.parse(msg))
+                    self._socket.sendall(bytes(cmd.ack, 'UTF-8'))
+                if cmd.send_peers(msg):                             # send the list of peers for the client to connect
+                    self._socket.sendall(bytes(str(client), 'UTF-8'))
         except socket.error:
             pass
         else:
             pass
 
-    """ The list of the peers' servers for each client to connect to. """
-    def _send_peer_list(self):
-        self._socket.sendall(bytes(str(client), 'UTF-8'))
-
-    def send_file(self, filename):
-        self._socket.sendall(bytes(filename, 'UTF-8'))
-
     """ Override Thread.run() to send/receive messages through the socket. """
     def run(self, buff_size=2048):
         while True:
-            if self._send() < 0:                                # send the TimeStamp
+            if self._send() < 0:                                # keep sending TimeStamps?
                 self.exit()
                 return
             self._receive()                                     # get a TimeStamp
