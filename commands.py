@@ -1,11 +1,13 @@
 s_cmd = 'SERVERADDR'
 g_cmd = 'GETPEERS'
-ack = 'OKAY'
+fack = 'FILEREC'
+fstart = 'FILESTART'
+fend = 'FILEEND'
 sep = ', '
 split_col = ':'
 doub = ')'
 split_msg = '\t'
-remove = ['[', ']', '\"']
+remove = ['[', ']', '\"', '\'']
 
 
 def parse(s):
@@ -21,14 +23,16 @@ def to_address(s):
 
 
 def to_list(s):
-    for r in remove:
+    for r in remove:                                                # clean the string
         s = s.replace(r, '')
-    s = s.split(sep)
-    print(s)
-    return s
+    ret = s.split(sep)
+    for i in range(len(ret)):
+        tmp = ret[i].split(split_col)
+        ret[i] = (str(tmp[0]), int(tmp[1]))
+    return ret
 
 
-def parse_addr(s):
+def parse_addr(s):                                                  # if list has extra data, drop the extra data
     return s.split(split_msg)[0]
 
 
@@ -44,5 +48,5 @@ def get_server(msg):
     return s_cmd in msg                                             # client asked to save listener address
 
 
-def server_ackd(msg):
-    return ack in msg
+def to_string(addr):
+    return str(addr[0] + ':' + str(addr[1]))                    # 'ip_addr:port'

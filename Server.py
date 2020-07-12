@@ -10,8 +10,8 @@ class CThread(threading.Thread):
         threading.Thread.__init__(self)                         # create a new thread
         self._socket = c_sock
         self._addr = c_addr
-        self._socket.setblocking(0)                             # non-blocking mode
-        print('Client has connected at address:\t', self._addr)
+        self._socket.setblocking(False)                         # non-blocking mode
+        print('A Client has connected at address:\t', self._addr)
         self._ts = TimeStamp(datetime.datetime.now())
         self._file = open(file, 'a')
 
@@ -39,7 +39,6 @@ class CThread(threading.Thread):
             else:
                 if cmd.get_server(msg):                             # save the ip_addr:port of the client's server
                     client.append(cmd.parse(msg))
-                    self._socket.sendall(bytes(cmd.ack, 'UTF-8'))
                 if cmd.send_peers(msg):                             # send the list of peers for the client to connect
                     self._socket.sendall(bytes(str(client), 'UTF-8'))
         except socket.error:
@@ -69,15 +68,11 @@ def make_server(host='127.0.0.1', port=8080):
     return server
 
 
-def to_string(addr):
-    return str(addr[0] + ':' + str(addr[1]))                    # 'ip_addr:port'
-
-
 def run_server(server):
     while True:                                                 # make a new thread for each connected client
         server.listen(1)
         conn, addr = server.accept()                            # get the client's socket and address
-        c = CThread(conn, to_string(addr))
+        c = CThread(conn, cmd.to_string(addr))
         c.start()                                               # start the connection/thread with the client
 
 

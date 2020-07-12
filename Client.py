@@ -12,7 +12,7 @@ class Client(threading.Thread):
         threading.Thread.__init__(self)                         # create a new thread
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.connect((host, port))
-        self._socket.setblocking(0)                             # non-blocking mode
+        self._socket.setblocking(False)                         # non-blocking mode
         self._host_ip = host
         self._my_ip = socket.gethostbyname(socket.gethostname())
         self._ts = TimeStamp(datetime.datetime.now())
@@ -39,38 +39,34 @@ class Client(threading.Thread):
             print('Server has forcibly closed the connection.')
             return -1
         except BlockingIOError:
+            # print('The connection is waiting for I/O operation.')
             return 0
         return 0
 
     """ Send the server this Client's listener address. """
-    def _invite_peers(self, buff_size=2048):
-        # send this client's listener socket address for other peers to connect
-        self._socket.sendall(bytes(cmd.s_cmd + str(self._peer.get_host()), 'UTF-8'))
-        try:
-            msg = self._socket.recv(buff_size)
-            if not cmd.server_ackd(msg):
-                print('Server did not ack receipt of listener socket address.')
-                exit(-1)
-        except:
-            pass
+    def _invite_peers(self):
+        self._socket.sendall(bytes(cmd.s_cmd + str(self.get_server_address()), 'UTF-8'))
 
     """ Connect to the list of peers from the server. """
     def _connect_to_peers(self, buff_size=2048):
-        # get the list of peers in this network, and connect to them
         self._socket.sendall(bytes(cmd.g_cmd, 'UTF-8'))
-        try:
-            msg = cmd.parse_addr(self._socket.recv(buff_size).decode())
-            self._peer.connect_to(cmd.to_list(msg))
-            print('Client', self._id, 'connected to all peers in the network.')
-        except:
-            pass
+        connected = False
+        while not connected:
+            try:
+                msg = self._socket.recv(buff_size).decode()
+                msg = cmd.parse_addr(msg)
+                self._peer.connect_to(cmd.to_list(msg))
+                print('Client', self._id, 'connected to all peers in the network.')
+                connected = True
+            except:
+                continue                                        # try again
 
     """ Override Thread.run() to send/receive messages through the socket. """
     def run(self):
         self._peer.start()                                      # tell the server this Client's listener address
         self._invite_peers()
         while True:
-            if self._receive() < 0:                             # get a TimeStamp
+            if self._receive() < 0:                             # get a TimeStamp; exit on error
                 self.exit()
                 return
             self._send()                                        # send the TimeStamp
@@ -95,4 +91,4 @@ if __name__ == '__main__':
     k = int(input('How many clients would you like to create?\t'))
     for i in range(k):
         Client(id=i).start()
-        print('Client', i, 'has been created at', datetime.datetime.now())
+        print('A new Client', i, 'has been created at', datetime.datetime.now())
