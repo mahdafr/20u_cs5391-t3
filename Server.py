@@ -2,7 +2,8 @@ import socket, threading, datetime
 from TimeStamp import TimeStamp
 import commands as cmd
 
-client = []
+client_addr = []
+client_thread = []
 
 
 class CThread(threading.Thread):
@@ -38,9 +39,10 @@ class CThread(threading.Thread):
                 self._file.write(msg + '\n')                        # write the TimeStamp to file
             else:
                 if cmd.get_server(msg):                             # save the ip_addr:port of the client's server
-                    client.append(cmd.parse(msg))
+                    client_addr.append(cmd.parse(msg))
+                    client_thread.append(self)
                 if cmd.send_peers(msg):                             # send the list of peers for the client to connect
-                    self._socket.sendall(bytes(str(client), 'UTF-8'))
+                    self._socket.sendall(bytes(str(client_addr), 'UTF-8'))
         except socket.error:
             pass
         else:
@@ -53,6 +55,14 @@ class CThread(threading.Thread):
                 self.exit()
                 return
             self._receive()                                     # get a TimeStamp
+
+    """ Has this connection closed? """
+    def test(self):
+        try:
+            self._socket.send(cmd.test)
+        except:
+            return True
+        return False
 
     """ Close the connection and file. """
     def exit(self):
@@ -68,12 +78,22 @@ def make_server(host='127.0.0.1', port=8080):
     return server
 
 
+def check_disconnects():
+    if len(client_thread) == 0 or len(client_addr) == 0:
+        return
+    for i in range(len(client_thread)):                         # remove any closed connections for cleaner runs
+        if client_thread[i].test():
+            client_thread.pop(i)                                # remove the client's thread
+            client_addr.pop(i)                                  # remove the listener's address
+
+
 def run_server(server):
     while True:                                                 # make a new thread for each connected client
         server.listen(1)
-        conn, addr = server.accept()                            # get the client's socket and address
-        c = CThread(conn, cmd.to_string(addr))
+        con, addr = server.accept()                             # get the client's socket and address
+        c = CThread(con, cmd.to_string(addr))
         c.start()                                               # start the connection/thread with the client
+        check_disconnects()
 
 
 if __name__ == '__main__':

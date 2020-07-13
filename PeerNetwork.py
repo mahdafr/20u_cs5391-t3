@@ -32,13 +32,13 @@ class PeerNetwork(threading.Thread):
 
     def connect_to(self, peer_list):
         if len(peer_list) == 1:                                     # create a new socket for one peer
-            if peer_list[0] is self.get_host():                     # do not open a connection to self
+            if cmd.is_same_addr(self.get_host(), peer_list[0]):     # do not open a connection to self
                 print('Can\'t connect to self.')
                 return
             self._connect_to(peer_list[0])
         else:
             for p in range(len(peer_list)):                         # open a socket to each peer
-                if peer_list[p] is self.get_host():                 # do not open a connection to self
+                if cmd.is_same_addr(self.get_host(), peer_list[p]): # do not open a connection to self
                     continue
                 self._connect_to(peer_list[p])
 
@@ -52,13 +52,16 @@ class PeerNetwork(threading.Thread):
     def send_file(self, filename):
         if self._sock is []:
             print('There are no peers to send files to.')
-        frm = 'Client\t' + str(self._id)
-        for p in self._sock:                                        # send file to those who this client connected to
+            return
+        frm = 'Client ' + str(self._id)
+        for p in self._sock:                                        # send file to every Peer
+            to = p.getsockname()
+            # p.setblocking(True)                                     # make sure the file goes through to end
             p.send(bytes(cmd.fstart, 'UTF-8'))
-            with open(filename, 'rb') as f:
+            with open(filename, 'rb') as f:                         # send line-by-line in bytes
                 p.send(f.readline())
             p.send(bytes(cmd.fend, 'UTF-8'))
-            print(frm, 'sent file to', p.socket.gethostbyname(socket.gethostname()))
+            print(frm, 'sent file to', to)
 
     """ Get the address of the listener server. """
     def get_host(self):
@@ -91,7 +94,6 @@ class PThread(threading.Thread):
             self._rec.append(self._socket.recv(buff_size).decode())
             if cmd.fstart in self._rec[-1]:
                 print('Begin receiving a file...')
-                self.exit()
             if cmd.fend in self._rec[-1]:
                 print('Received EOF.')
                 self.exit()

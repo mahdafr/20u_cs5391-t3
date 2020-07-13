@@ -1,5 +1,6 @@
 s_cmd = 'SERVERADDR'
 g_cmd = 'GETPEERS'
+test = 'TEST'
 fack = 'FILEREC'
 fstart = 'FILESTART'
 fend = 'FILEEND'
@@ -49,4 +50,14 @@ def get_server(msg):
 
 
 def to_string(addr):
-    return str(addr[0] + ':' + str(addr[1]))                    # 'ip_addr:port'
+    return str(addr[0] + ':' + str(addr[1]))                        # 'ip_addr:port'
+
+
+def is_same_addr(a, b):                                             # (host, port)
+    return a[0] == b[0] and a[1] == b[1]
+
+
+def clean(msg):
+    if test not in msg:
+        return msg
+    return msg.replace(test, '')

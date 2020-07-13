@@ -31,7 +31,8 @@ class Client(threading.Thread):
     def _receive(self, buff_size=2048):
         try:
             msg = self._socket.recv(buff_size).decode()
-            self._file.write(msg + '\n')                        # write to file
+            msg = cmd.clean(msg)
+            self._file.write(msg + '\n')                    # write to file
         except ConnectionAbortedError:
             print('Server has closed the connection.')
             return -1
