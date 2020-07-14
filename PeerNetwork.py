@@ -21,31 +21,32 @@ class PeerNetwork(threading.Thread):
 
     """ Override Thread.run() to get connections. """
     def run(self):
-        while True:                                                 # make a new thread for each connected client
+        n_files_received = 0
+        while True:
             try:
                 self._listener.listen(1)                            # not limiting the number of connections
                 conn, addr = self._listener.accept()                # get the client's socket and address
                 addr = cmd.to_string(addr)
                 self._peer_thread.append(PThread(conn, addr, self._client_id, self._peers))
                 self._peer_thread[-1].start()                       # start the connection/thread with the client
-                self._peers+=1
+                self._peers += 1
             except OSError:
                 return
 
-    """ Connect to Peers' listener sockets and send the file, then close the connection. """
+    """ Connect to Peers and send the file, then close the connection. """
     def connect_and_send(self, peer_list):
-        for p in range(len(peer_list)):                             # open a socket to each peer
+        print('Num of peers: ' + peer_list)
+        for p in range(len(peer_list)):
             if cmd.is_same_addr(self.get_host(), peer_list[p]):     # do not open a connection to self
                 continue
-            conn = self._connect_to_peer(peer_list[p])
-            self._send_file(self._fname, conn)
-            conn.close()                                            # close the socket
+            conn = self._connect_to_peer(peer_list[p])              # open a connection
+            self._send_file(self._fname, conn)                      # send the file, line by line
+            conn.close()                                            # close the connection for this peer
 
     def _connect_to_peer(self, p):
         c = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         c.connect(p)
         c.setblocking(False)
-        print(self._me_str, 'connected to peer at', p)
         return c
 
     """ Send the file to each peer. """
@@ -53,8 +54,9 @@ class PeerNetwork(threading.Thread):
         to = conn.getsockname()
         # p.setblocking(True)                                       # make sure the file goes through to end
         conn.send(bytes(cmd.fstart, 'UTF-8'))
-        with open(filename, 'rb') as f:                             # send line-by-line in bytes
-            conn.send(f.readline())
+        print('starting file:', filename)
+        with open(filename, 'rb') as f:                             # send file in bytes
+            conn.send(f.read())
         conn.send(bytes(cmd.fend, 'UTF-8'))
         print(self._me_str, 'sent file to', to)
 
@@ -79,7 +81,7 @@ class PThread(threading.Thread):
         self._rec = []
         self._id = id
         self._client_id = cid
-        self._me_str = 'Peer ' + str(self._id) + ' of Client ' + self._client_id
+        self._me_str = 'Peer ' + str(self._id) + ' of Client ' + str(self._client_id)
 
     """ Send an ack for receipt of the File. """
     def _send(self, msg=cmd.fack):

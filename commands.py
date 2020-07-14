@@ -1,4 +1,5 @@
 host = '127.0.0.1'
+port = 8080
 s_cmd = 'SERVERADDR'
 g_cmd = 'GETPEERS'
 test = 'TEST'
@@ -25,12 +26,16 @@ def to_address(s):
 
 
 def to_list(s):
+    print('before mods', s)
     for r in remove:                                                # clean the string
         s = s.replace(r, '')
+    print('after replace', s)
     ret = s.split(sep)
+    print('after split', s)
     for i in range(len(ret)):
         tmp = ret[i].split(split_col)
         ret[i] = (str(tmp[0]), int(tmp[1]))
+    print('after loop', ret)
     return ret
 
 
@@ -38,15 +43,17 @@ def parse_addr(s):                                                  # if list ha
     return s.split(split_msg)[0]
 
 
-def can_write_to_file(msg):
-    return g_cmd not in msg and s_cmd not in msg                    # write to file if not receiving commands
+def to_file(msg):
+    msg = msg.replace(g_cmd, '')                                    # drop commands in TimeStamp
+    msg = msg.replace(s_cmd, '')
+    return msg
 
 
 def send_peers(msg):
     return g_cmd in msg                                             # client asked to send peer list
 
 
-def get_server(msg):
+def got_server(msg):
     return s_cmd in msg                                             # client asked to save listener address
 
 
@@ -60,3 +67,8 @@ def is_same_addr(a, b):                                             # (host, por
 
 def clean(msg):
     return msg.replace(test, '')
+
+
+def client_to_str(c_list):
+    return str(c_list)
+

@@ -35,17 +35,13 @@ class CThread(threading.Thread):
     def _receive(self, buff_size=2048):
         try:
             msg = self._socket.recv(buff_size).decode()
-            if cmd.can_write_to_file(msg):
-                self._file.write(msg + '\n')                        # write the TimeStamp to file
-            else:
-                if cmd.get_server(msg):                             # save the ip_addr:port of the client's server
-                    client_addr.append(cmd.parse(msg))
-                    client_thread.append(self)
-                if cmd.send_peers(msg):                             # send the list of peers for the client to connect
-                    self._socket.sendall(bytes(str(client_addr), 'UTF-8'))
+            self._file.write(cmd.to_file(msg) + '\n')           # write the TimeStamp to file
+            if cmd.got_server(msg):                             # save the ip_addr:port of the client's server
+                client_addr.append(cmd.parse(msg))
+                client_thread.append(self)
+            if cmd.send_peers(msg):                             # send the list of peers for the client to connect
+                self._socket.sendall(bytes(cmd.client_to_str(client_addr), 'UTF-8'))
         except socket.error:
-            pass
-        else:
             pass
 
     """ Override Thread.run() to send/receive messages through the socket. """
@@ -70,7 +66,7 @@ class CThread(threading.Thread):
         self._file.close()
 
 
-def make_server(host='127.0.0.1', port=8080):
+def make_server(host=cmd.host, port=cmd.port):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((host, port))
@@ -93,7 +89,7 @@ def run_server(server):
         con, addr = server.accept()                             # get the client's socket and address
         c = CThread(con, cmd.to_string(addr))
         c.start()                                               # start the connection/thread with the client
-        check_disconnects()
+        # check_disconnects()
 
 
 if __name__ == '__main__':

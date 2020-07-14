@@ -8,7 +8,7 @@ fname1 = '_TimeData.txt'
 
 
 class Client(threading.Thread):
-    def __init__(self, id, host='127.0.0.1', port=8080):
+    def __init__(self, id, host=cmd.host, port=cmd.port):
         threading.Thread.__init__(self)                         # create a new thread
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.connect((host, port))
@@ -47,36 +47,45 @@ class Client(threading.Thread):
     """ Send the server this Client's listener address. """
     def _invite_peers(self):
         self._socket.sendall(bytes(cmd.s_cmd + str(self.get_server_address()), 'UTF-8'))
+        print(self._me_str, 'listener socket address at', self.get_server_address())
 
-    """ Connect to the list of peers from the server. """
-    def _connect_to_peers(self, buff_size=2048):
-        self._socket.sendall(bytes(cmd.g_cmd, 'UTF-8'))         # request list of peers
-        try:
-            msg = self._socket.recv(buff_size).decode()
-            msg = cmd.parse_addr(msg)
-            self._peer.connect_and_send(cmd.to_list(msg))
-        except:
-            pass
+    """ Connect to Peers in the network, and send the files. """
+    def _connect_to_peers(self):
+        peer_list = self._get_peers()
+        connected = False
+        while not connected:                                    # attempt the connection to the full peer list
+            try:
+                self._peer.connect_and_send(peer_list)
+                connected = True
+            except:
+                continue
+
+    """ Get the list of peers from the server in a readable format. """
+    def _get_peers(self, buff_size=2048):
+        self._socket.sendall(bytes(cmd.g_cmd, 'UTF-8'))
+        msg = ''
+        while msg == '':                                        # get the list of Peers' listener addresses
+            try:
+                msg = self._socket.recv(buff_size).decode()
+            except:
+                continue
+        msg = cmd.parse_addr(msg)                               # convert the list to (host, port) tuples
+        return cmd.to_list(msg)
 
     """ Override Thread.run() to send/receive messages through the socket. """
     def run(self):
         self._peer.start()                                      # tell the server this Client's listener address
         self._invite_peers()
-        while True:
+        while not self._ts.finished(datetime.datetime.now()):
             self._receive()                                     # get a TimeStamp; exit on error
             self._send()                                        # send the TimeStamp
-            if self._ts.finished(datetime.datetime.now()):      # should this client close the connection?
-                print(self._me_str + ' finished exchanging TimeStamps with the Server.')
-                self._connect_to_peers()
-                print(self._me_str + ' finished sending TimeStamp file to Peers.')
-                # self.exit()
-                return
+        print(self._me_str + ' finished exchanging TimeStamps with the Server.')
+        self._connect_to_peers()
+        print(self._me_str + ' finished sending TimeStamp file to Peers.')
+        # self.exit()
 
     """ Close the connection and file. """
     def exit(self):
-        # todo exit only when all Peer's have sent/received files
-        # while self._peer.is_active():
-        #     continue
         self._peer.exit()
         self._socket.close()
         self._file.close()
