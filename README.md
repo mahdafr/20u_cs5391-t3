@@ -40,7 +40,7 @@ _End of Timestamp Data (after 5 minutes)_
     - there are 60s in a minute (so, 5m is 300s)
     - these times helped each client thread to know when to store a timestamp and when to close their connections (killing threads); see Part 3 for their last actions
 - In order to prevent race conditions in the socket connections, I used the `socket.setblocking(FLAG)` method
-    - the `FLAG` parameter is set to `0` in order to prevent waiting
+    - the `FLAG` parameter is set to `False` in order to prevent waiting
     - this is similar to the `settimeout()` method of the Python [socket](https://docs.python.org/3/library/socket.html) library
 
 ## Part II

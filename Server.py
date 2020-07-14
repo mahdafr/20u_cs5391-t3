@@ -24,10 +24,10 @@ class CThread(threading.Thread):
                 self._socket.sendall(bytes(msg, 'UTF-8'))           # time to send the TimeStamp
                 self._file.write(msg + '\n')                        # write the TimeStamp to file
             except ConnectionAbortedError:
-                print('Client has disconnected from:\t', self._addr)
+                print('A Client has disconnected from:\t', self._addr)
                 return -1
             except ConnectionResetError:
-                print('Client has forcibly disconnected from:\t', self._addr)
+                print('A Client has forcibly disconnected from:\t', self._addr)
                 return -1
         return 0
 

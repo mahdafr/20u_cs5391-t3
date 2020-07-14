@@ -1,3 +1,4 @@
+host = '127.0.0.1'
 s_cmd = 'SERVERADDR'
 g_cmd = 'GETPEERS'
 test = 'TEST'
@@ -58,6 +59,4 @@ def is_same_addr(a, b):                                             # (host, por
 
 
 def clean(msg):
-    if test not in msg:
-        return msg
     return msg.replace(test, '')
