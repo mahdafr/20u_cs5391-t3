@@ -38,7 +38,7 @@ class PeerNetwork(threading.Thread):
             if cmd.is_same_addr(self.get_host(), peer_list[p]):     # do not open a connection to self
                 continue
             conn = self._connect_to_peer(peer_list[p])
-            self.send_file(self._fname, conn)
+            self._send_file(self._fname, conn)
             conn.close()                                            # close the socket
 
     def _connect_to_peer(self, p):
@@ -49,11 +49,11 @@ class PeerNetwork(threading.Thread):
         return c
 
     """ Send the file to each peer. """
-    def send_file(self, filename, conn):
+    def _send_file(self, filename, conn):
         to = conn.getsockname()
-        # p.setblocking(True)                                   # make sure the file goes through to end
+        # p.setblocking(True)                                       # make sure the file goes through to end
         conn.send(bytes(cmd.fstart, 'UTF-8'))
-        with open(filename, 'rb') as f:                         # send line-by-line in bytes
+        with open(filename, 'rb') as f:                             # send line-by-line in bytes
             conn.send(f.readline())
         conn.send(bytes(cmd.fend, 'UTF-8'))
         print(self._me_str, 'sent file to', to)
@@ -61,11 +61,6 @@ class PeerNetwork(threading.Thread):
     """ Get the address of the listener server. """
     def get_host(self):
         return self._listener_host
-
-    def is_active(self):
-        # did I send N files to my N Peers
-        print(self._peers == len(self._peers_connected_to))
-        return self._peers == len(self._peers_connected_to)
 
     """ Close all the connected peers. """
     def exit(self):
