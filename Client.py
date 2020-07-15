@@ -19,7 +19,7 @@ class Client(threading.Thread):
         self._file = open(fname0+str(id)+fname1, 'a')           # append to this file
         self._peer = PeerNetwork(id, self._file.name)           # has a listener for peers
         self._id = id
-        self._me_str = 'Client ' + str(self._id)
+        self._me_str = 'Client ' + str(self._id) + ' '
 
     """ Send a TimeStamp, if it is time to do so. """
     def _send(self):
@@ -33,7 +33,7 @@ class Client(threading.Thread):
         try:
             msg = self._socket.recv(buff_size).decode()
             msg = cmd.clean(msg)
-            self._file.write(msg + '\n')                    # write to file
+            self._file.write(msg + '\n')                        # write to file
         except ConnectionAbortedError:
             print('Server has closed the connection.')
             self.exit()
@@ -47,30 +47,33 @@ class Client(threading.Thread):
     """ Send the server this Client's listener address. """
     def _invite_peers(self):
         self._socket.sendall(bytes(cmd.s_cmd + str(self.get_server_address()), 'UTF-8'))
-        print(self._me_str, 'listener socket address at', self.get_server_address())
+        print(self._me_str, 'has listener socket at address', self.get_server_address())
 
     """ Connect to Peers in the network, and send the files. """
     def _connect_to_peers(self):
         peer_list = self._get_peers()
+        print(self._me_str + str(peer_list) + '\t' + str(len(peer_list)))
         connected = False
         while not connected:                                    # attempt the connection to the full peer list
             try:
                 self._peer.connect_and_send(peer_list)
                 connected = True
-            except:
+            except ConnectionRefusedError:
                 continue
 
     """ Get the list of peers from the server in a readable format. """
     def _get_peers(self, buff_size=2048):
         self._socket.sendall(bytes(cmd.g_cmd, 'UTF-8'))
-        msg = ''
-        while msg == '':                                        # get the list of Peers' listener addresses
+        pl = ''
+        while pl == '':                                         # get the list of Peers' listener addresses
             try:
                 msg = self._socket.recv(buff_size).decode()
+                pl, ts = cmd.get_pl_and_ts(msg)
+                if ts != '':
+                    self._file.write(ts + '\n')                 # write the TimeStamp to file, if any
             except:
                 continue
-        msg = cmd.parse_addr(msg)                               # convert the list to (host, port) tuples
-        return cmd.to_list(msg)
+        return pl                                               # convert the list to (host, port) tuples
 
     """ Override Thread.run() to send/receive messages through the socket. """
     def run(self):
@@ -79,9 +82,9 @@ class Client(threading.Thread):
         while not self._ts.finished(datetime.datetime.now()):
             self._receive()                                     # get a TimeStamp; exit on error
             self._send()                                        # send the TimeStamp
-        print(self._me_str + ' finished exchanging TimeStamps with the Server.')
+        print(self._me_str + 'finished exchanging TimeStamps with the Server.')
         self._connect_to_peers()
-        print(self._me_str + ' finished sending TimeStamp file to Peers.')
+        print(self._me_str + 'finished sending TimeStamp file to Peers.')
         # self.exit()
 
     """ Close the connection and file. """
@@ -99,4 +102,4 @@ if __name__ == '__main__':
     k = int(input('How many clients would you like to create?\t'))
     for i in range(k):
         Client(id=i).start()
-        print('A new Client', i, 'has been created at', datetime.datetime.now())
+        print('Client', i, 'created at', datetime.datetime.now())

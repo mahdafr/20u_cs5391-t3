@@ -21,10 +21,9 @@ class PeerNetwork(threading.Thread):
 
     """ Override Thread.run() to get connections. """
     def run(self):
-        n_files_received = 0
         while True:
             try:
-                self._listener.listen(1)                            # not limiting the number of connections
+                self._listener.listen(1)                            # not limiting the number of connections to accept
                 conn, addr = self._listener.accept()                # get the client's socket and address
                 addr = cmd.to_string(addr)
                 self._peer_thread.append(PThread(conn, addr, self._client_id, self._peers))
@@ -35,7 +34,7 @@ class PeerNetwork(threading.Thread):
 
     """ Connect to Peers and send the file, then close the connection. """
     def connect_and_send(self, peer_list):
-        print('Num of peers: ' + peer_list)
+        print('Num of peers: ', peer_list)
         for p in range(len(peer_list)):
             if cmd.is_same_addr(self.get_host(), peer_list[p]):     # do not open a connection to self
                 continue
@@ -56,7 +55,9 @@ class PeerNetwork(threading.Thread):
         conn.send(bytes(cmd.fstart, 'UTF-8'))
         print('starting file:', filename)
         with open(filename, 'rb') as f:                             # send file in bytes
-            conn.send(f.read())
+            m = f.read()
+            conn.send(m)
+            print('sent this as file:\t', m)
         conn.send(bytes(cmd.fend, 'UTF-8'))
         print(self._me_str, 'sent file to', to)
 
@@ -89,12 +90,14 @@ class PThread(threading.Thread):
 
     """ Receive the file, without blocking the thread. """
     def _receive(self, buff_size=2048):
-        try:                                                        # save what has been sent
-            self._rec.append(self._socket.recv(buff_size).decode())
-            if cmd.fstart in self._rec[-1]:
-                print(self._me_str + ' is receiving a file...')
+        try:
+            rec = self._socket.recv(buff_size).decode()
+            if rec != '':                                           # save the file that has been sent
+                self._rec.append(rec)
+            if cmd.fstart in self._rec[-1]:                         # did we start getting a file?
+                print(self._me_str, 'is receiving a file...')
             if cmd.fend in self._rec[-1]:
-                print(self._me_str + ' received EOF.')
+                print(self._me_str, 'received EOF.')
         except socket.error:
             pass
 

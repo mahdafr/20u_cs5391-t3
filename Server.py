@@ -35,11 +35,11 @@ class CThread(threading.Thread):
     def _receive(self, buff_size=2048):
         try:
             msg = self._socket.recv(buff_size).decode()
-            self._file.write(cmd.to_file(msg) + '\n')           # write the TimeStamp to file
+            self._file.write(cmd.drop_commands_for_ts(msg) + '\n')
             if cmd.got_server(msg):                             # save the ip_addr:port of the client's server
                 client_addr.append(cmd.parse(msg))
                 client_thread.append(self)
-            if cmd.send_peers(msg):                             # send the list of peers for the client to connect
+            if cmd.wants_peers(msg):                            # send the list of peers for the client to connect
                 self._socket.sendall(bytes(cmd.client_to_str(client_addr), 'UTF-8'))
         except socket.error:
             pass

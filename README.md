@@ -63,16 +63,25 @@ I encourage to think on how generically you can develop a program, which will al
     - where the connections are made through the main server (from Part 1) who stores the list of connected clients' listening server addresses
     - the list of sockets are stored and the list of clients' (peers who connected through the listener server) are also stored, see [this StackOverflow question](https://stackoverflow.com/questions/17539859/how-to-create-multi-server-sockets-on-one-client-in-python) which uses the Python [select](https://docs.python.org/2/library/select.html) library
 - Once a client's lifecycle completes (at 5m):
-    - it sends its file to all its peers:
-        - both those connected through the listener socket, and
-        - those peers it connected to
-        - these lists _might_ have duplicates so a dictionary will be used to map unique clients' information (host address and listener server address)
+    - the Client requests the list of peers from the Server
+    - the Client send iterates through the list of peers
+        - it connects to each Peer (_here, many issues occurred when debugging multithreaded output and parsing the list of Peers' addresses correctly_)
+        - it sends its TimeStamp file to each of its Peers (_the file is opened as read-only, as bytes, and read in a single call: `f.read()`_)
+        - it closes the connection (_connections (via sockets) can be saved, though are not for the purposes of this assignment_)
+        - since the list will have all the addresses of the Clients' listener sockets, a Client will not connect to itself
     - each connected peer will receive a file from a client
+        - Peers receive a `FILESTART` command from their Peers to signal the file about to be sent and `FILEEND` to acknowledge receipt
+        - Peers save each message received
+        - Peers do not save received data to files, though this can be feasibly changed
+- Some TODOs remain, for improved program usability
+    - keep track of Server's Clients (and remove from saved list of Clients) to avoid restarting program for new tests
+    - close Client (and their PeerNetwork) when they finish sending/receiving files from all Peers
 
 ## To Run
 1. Create an `out/` directory in the same folder as this project to output files.
-2. Run the `Server.py` script first.
+2. Run the `Server.py` script first. _Note_: Server will continually update its file with sent TimeStamps throughout the life of the program.
 3. Run the `Client.py` script second. Enter the number of clients to create.
+4. End the executables when all Clients have completed their Task.
 
 ## References
 http://net-informations.com/python/net/thread.htm

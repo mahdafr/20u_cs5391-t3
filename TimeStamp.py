@@ -16,5 +16,5 @@ class TimeStamp:
         return (now - self._last_sent).microseconds >= time
 
     """ Is it time to close the thread (5m since START)? """
-    def finished(self, now, time=15):                          # 60s in a minute, 300s in 5 minutes
+    def finished(self, now, time=300):                          # 60s in a minute, 300s in 5 minutes
         return (now - self._START).seconds >= time
